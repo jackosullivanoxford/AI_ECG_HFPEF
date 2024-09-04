@@ -96,19 +96,6 @@ cfg = {
 
 # Examples of task configs, which will overwrite the above config. 
 task_cfg = {
-    "lvsd": {
-        "dataloader": {
-            "task": "lvsd",
-            "binary_cutoff": 35,
-            "binary_positive_class": "below",
-            # The csv containing labels
-            "label_file": "/path/to/lvef/labels",
-            # The column in `label_file` with the labels (in this case continuous)
-            # ejection fractions which are binarized according to `binary_cutoff` and
-            # `binary_positive_class` into LVSD labels
-            "label_keys": ["lvef"],
-        },
-    },
     "ICDHFpEF": {
         "dataloader": {
             # Since the labels here are already binary, no need to overwrite binarization
