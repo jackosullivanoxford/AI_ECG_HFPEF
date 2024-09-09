@@ -7,4 +7,3 @@
 
 module load cuda
 srun hostname
-
