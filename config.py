@@ -192,7 +192,35 @@ task_cfg = {
             "label_keys": ["H2PEF_imp"],
             "normalize_y": True,  # Optional, depending on the data
         }
+    },
+    # Adding missing binary targets
+    "late_HFpEF_ICD": {
+        "dataloader": {
+            "task": "late_HFpEF_ICD",
+            "label_file": "/oak/stanford/groups/euan/projects/jackos/ecg/targets_for_git_AI_ECG_HFPEF/target_late_HFpEF_ICD.csv",
+            "label_keys": ["late_HFpEF_ICD"],
+        }
+    },
+    "ICD_HFNOS_diastolic": {
+        "dataloader": {
+            "task": "ICD_HFNOS_diastolic",
+            "label_file": "/oak/stanford/groups/euan/projects/jackos/ecg/targets_for_git_AI_ECG_HFPEF/target_ICD_HFNOS_diastolic.csv",
+            "label_keys": ["ICD_HFNOS_diastolic"],
+        }
+    },
+    "ICDHFNOS": {
+        "dataloader": {
+            "task": "ICDHFNOS",
+            "label_file": "/oak/stanford/groups/euan/projects/jackos/ecg/targets_for_git_AI_ECG_HFPEF/target_ICDHFNOS.csv",
+            "label_keys": ["ICDHFNOS"],
+        }
+    },
+    "early_HFpEF_ICD": {
+        "dataloader": {
+            "task": "early_HFpEF_ICD",
+            "label_file": "/oak/stanford/groups/euan/projects/jackos/ecg/targets_for_git_AI_ECG_HFPEF/target_early_HFpEF_ICD.csv",
+            "label_keys": ["early_HFpEF_ICD"],
+        }
     }
 }
-
 

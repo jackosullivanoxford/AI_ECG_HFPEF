@@ -230,3 +230,94 @@ class ECGDataset(torch.utils.data.Dataset):
 
         return processed_data.T  # Transpose the data back to its original shape
 
+    def baseline(self, data):
+        """
+        Applies a baseline wander removal filter to the waveform data using median filtering.
+        
+        The function estimates the baseline by applying median filters with different
+        window sizes and subtracts the estimated baseline from the original signal.
+        """
+        data = data.T  # Transpose the data to process each lead independently
+        row, __ = data.shape  # Get the number of leads (rows)
+        sampling_frequency = data.shape[1] // 10  # Estimate the sampling frequency from the number of samples
+
+        # First median filter to capture short-term variations (0.2 * sampling frequency window size)
+        win_size = int(np.round(0.2 * sampling_frequency)) + 1
+        baseline = scipy.ndimage.median_filter(data, [1, win_size], mode="constant")
+
+        # Second median filter to capture long-term variations (0.6 * sampling frequency window size)
+        win_size = int(np.round(0.6 * sampling_frequency)) + 1
+        baseline = scipy.ndimage.median_filter(baseline, [1, win_size], mode="constant")
+
+        # Subtract the estimated baseline from the original data to remove baseline wander
+        filt_data = data - baseline
+
+        return filt_data.T  # Transpose the filtered data back to its original shape
+
+    def get_mean_and_std(self, batch_size=128, samples=8192):
+        """
+        Calculates and sets the mean and standard deviation of the ECG data for normalization.
+
+        Arguments:
+            batch_size: Number of samples per batch for the DataLoader.
+            samples: Number of samples to use for calculating the mean and standard deviation.
+
+        This method first checks if the mean and std are already computed or if normalization is 
+        not required. If not, it selects a random subset of the dataset, loads it in batches, 
+        and computes the mean and standard deviation for normalization purposes.
+        """
+        
+        # If mean and standard deviation already exist in the config or normalization is not required, return
+        if ("x_mean" in self.cfg and "x_std" in self.cfg) or not self.cfg["normalize_x"]:
+            return
+        
+        # Create a deep copy of the config to avoid modifying the original
+        cfg = copy.deepcopy(self.cfg)
+        
+        # Temporarily set `return_labels` and `normalize_x` to False while calculating statistics
+        self.cfg["return_labels"], self.cfg["normalize_x"] =  False, False
+
+        # Randomly select a subset of indices from the dataset for calculating statistics
+        indices = np.random.choice(len(self), min(len(self), samples), replace=False)
+        
+        # Create a DataLoader to iterate over the sampled subset of data
+        dataloader = torch.utils.data.DataLoader(
+            torch.utils.data.Subset(self, indices),  # Subset of dataset
+            batch_size=batch_size,  # Batch size
+            num_workers=self.cfg["n_dataloader_workers"],  # Number of parallel workers
+            shuffle=False  # No need to shuffle as we're computing statistics
+        )
+
+        n = 0  # Total number of samples
+        s1 = 0.  # Sum of the data
+        s2 = 0.  # Sum of the squared data
+
+        print("loading mean and std", flush=True)  # Print the status
+        
+        # Loop through the data in batches
+        for x in tqdm.tqdm(dataloader):  # tqdm is used for progress bar display
+            # Reshape and accumulate data statistics
+            x = x[0].transpose(0, 1).reshape(x[0].shape[1], -1)  # Reshape to (channels, -1)
+            n += np.float64(x.shape[1])  # Count total number of samples
+            s1 += torch.sum(x, dim=1).numpy().astype(np.float64)  # Accumulate sum of data
+            s2 += torch.sum(x ** 2, dim=1).numpy().astype(np.float64)  # Accumulate sum of squared data
+        
+        # Calculate the mean and standard deviation from the accumulated sums
+        x_mean = (s1 / n).astype(np.float32)  # Mean of the data
+        x_std = np.sqrt(s2 / n - x_mean ** 2).astype(np.float32)  # Standard deviation of the data
+
+        # Print a warning if fewer samples than expected were used
+        if n < samples:
+            print(f"WARNING: calculating mean and std based on {n} waveforms", flush=True)
+
+        # Output the calculated mean and std for verification
+        print(f"Means: {x_mean}")
+        print(f"Stds: {x_std}")
+
+        # Restore the original configuration from the deep copy
+        self.cfg = cfg
+        
+        # Store the calculated mean and std in the config for future normalization
+        self.cfg["x_mean"] = x_mean
+        self.cfg["x_std"] = x_std
+
